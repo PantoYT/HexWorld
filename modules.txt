@@ -1,0 +1,42 @@
+Faza 0 — Fundament (sesja 1–2)
+Pre-populacja bazy
+Skrypt Python offline, ~15 min
+Docker Compose
+PG + Redis lokalnie, gratis
+Faza 1 — Core API (sesja 3–8)
+Auth
+JWT + refresh token
+Feed API
+GET /feed/next + Bloom Filter
+Discovery
+Atomowy UPDATE
+Like / Save
+Redis INCR → flush co 30s
+Historia
+user_color_interactions
+Profil
+GET /users/:username
+Faza 2 — Frontend mobilny (sesja 9–16)
+Feed screen
+Swipe, overlay, like
+Discovery flow
+Animacja + prompt nazwy
+Color detail
+Hex RGB HSL CMYK
+Faza 3 — Social (sesja 17–24)
+Komentarze
+POST /colors/:id/comments
+Follow + push
+FCM (Firebase, gratis)
+Wyszukiwanie
+Meilisearch (open source)
+Faza 4 — Tryby dodatkowe (sesja 25+)
+Color of the Day
+Cron + scoring HSL
+Color Matching
+deltaE CIE76, timed mode
+Palettes
+Eksport PNG, JSON, Figma
+Stack zerowego budżetu (development)
+Docker lokalnie · Railway free tier (500h/mo) · Cloudflare R2 free · Firebase FCM free
+Produkcja MVP: ~$40/mo dopiero gdy potrzebujesz · Railway $5 · Supabase $25 · Redis Cloud free
