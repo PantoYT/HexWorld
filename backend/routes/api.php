@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ColorController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\FeedController;
+use App\Http\Controllers\Api\PaletteController;
+use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -13,13 +15,15 @@ Route::prefix('v1/auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
-// Public color info (no auth needed to view)
+// Public routes
 Route::prefix('v1')->group(function () {
     Route::get('/colors/{hexId}', [ColorController::class, 'show'])->whereNumber('hexId');
     Route::get('/colors/{hexId}/comments', [CommentController::class, 'index'])->whereNumber('hexId');
     Route::get('/users/{username}', [UserController::class, 'show']);
     Route::get('/users/{username}/discovered', [UserController::class, 'discovered']);
     Route::get('/users/{username}/liked', [UserController::class, 'liked']);
+    Route::get('/palettes/{id}', [PaletteController::class, 'show']);
+    Route::get('/search', [SearchController::class, 'search']);
 });
 
 // Authenticated routes
@@ -45,4 +49,11 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     // Social
     Route::post('/users/{username}/follow', [UserController::class, 'follow']);
     Route::post('/users/{username}/unfollow', [UserController::class, 'unfollow']);
+
+    // Palettes
+    Route::get('/palettes', [PaletteController::class, 'index']);
+    Route::post('/palettes', [PaletteController::class, 'store']);
+    Route::post('/palettes/{id}/colors', [PaletteController::class, 'addColor']);
+    Route::delete('/palettes/{id}/colors/{hexId}', [PaletteController::class, 'removeColor'])->whereNumber('hexId');
+    Route::delete('/palettes/{id}', [PaletteController::class, 'destroy']);
 });
