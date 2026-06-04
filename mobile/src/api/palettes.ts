@@ -29,3 +29,9 @@ export const deletePalette = (paletteId: string) =>
 
 export const searchColors = (q: string) =>
   api.get<{ data: ColorData[]; type: string }>('/search', { params: { q } }).then(r => r.data);
+
+export const getColorOfTheDay = () =>
+  api.get<ColorData & { cotd_date: string; score: number }>('/color-of-the-day').then(r => r.data);
+
+export const getPaletteDetail = (id: string) =>
+  api.get<Palette & { colors: ColorData[] }>(`/palettes/${id}`).then(r => r.data);

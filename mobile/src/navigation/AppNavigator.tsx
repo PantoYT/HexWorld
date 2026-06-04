@@ -6,6 +6,7 @@ import { Text } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import FeedScreen from '../screens/FeedScreen';
 import SearchScreen from '../screens/SearchScreen';
+import ColorOfTheDayScreen from '../screens/ColorOfTheDayScreen';
 import PalettesScreen from '../screens/PalettesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -38,6 +39,14 @@ function MainTabs() {
         options={{
           tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🔍</Text>,
           tabBarLabel: 'Search',
+        }}
+      />
+      <Tab.Screen
+        name="ColorOfTheDay"
+        component={ColorOfTheDayScreen}
+        options={{
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 22 }}>✦</Text>,
+          tabBarLabel: 'Today',
         }}
       />
       <Tab.Screen

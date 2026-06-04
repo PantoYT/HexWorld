@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ColorController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\FeedController;
+use App\Http\Controllers\Api\ColorOfTheDayController;
 use App\Http\Controllers\Api\PaletteController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\UserController;
@@ -24,6 +25,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/users/{username}/liked', [UserController::class, 'liked']);
     Route::get('/palettes/{id}', [PaletteController::class, 'show']);
     Route::get('/search', [SearchController::class, 'search']);
+    Route::get('/color-of-the-day', [ColorOfTheDayController::class, 'today']);
+    Route::get('/color-of-the-day/history', [ColorOfTheDayController::class, 'history']);
 });
 
 // Authenticated routes

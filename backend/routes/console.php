@@ -1,8 +1,9 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+// Flush Redis like counters → PostgreSQL every minute
+Schedule::command('hexworld:flush-likes')->everyMinute();
+
+// Pick Color of the Day at 00:01 UTC
+Schedule::command('hexworld:cotd')->dailyAt('00:01');

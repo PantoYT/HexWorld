@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Dimensions,
+  ActivityIndicator, Dimensions, Alert, Modal, FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getColor, ColorData } from '../api/colors';
+import { getPalettes, addColorToPalette, Palette } from '../api/palettes';
 
 const { width: W } = Dimensions.get('window');
 
@@ -33,10 +34,37 @@ interface Props {
 export default function ColorDetailScreen({ hexId, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const [data, setData] = useState<(ColorData & { similar: ColorData[] }) | null>(null);
+  const [palettePickerOpen, setPalettePickerOpen] = useState(false);
+  const [palettes, setPalettes] = useState<Palette[]>([]);
+  const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [added, setAdded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     getColor(hexId).then(setData).catch(console.warn);
   }, [hexId]);
+
+  const openPalettePicker = async () => {
+    try {
+      const ps = await getPalettes();
+      setPalettes(ps);
+      setPalettePickerOpen(true);
+    } catch (e) {
+      Alert.alert('Error', 'Could not load palettes');
+    }
+  };
+
+  const handleAddToPalette = async (paletteId: string) => {
+    if (addingTo || added.has(paletteId)) return;
+    setAddingTo(paletteId);
+    try {
+      await addColorToPalette(paletteId, hexId);
+      setAdded(prev => new Set([...prev, paletteId]));
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Failed to add color');
+    } finally {
+      setAddingTo(null);
+    }
+  };
 
   if (!data) {
     return (
@@ -52,17 +80,15 @@ export default function ColorDetailScreen({ hexId, onClose }: Props) {
 
   return (
     <View style={styles.container}>
-      {/* Hero swatch */}
+      {/* Hero */}
       <View style={[styles.hero, { backgroundColor: bg, paddingTop: insets.top + 12 }]}>
         <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
           <Text style={[styles.closeText, { color: fg }]}>✕</Text>
         </TouchableOpacity>
-
         {data.custom_name && (
           <Text style={[styles.customName, { color: fg }]}>"{data.custom_name}"</Text>
         )}
         <Text style={[styles.hexHero, { color: fg }]}>#{data.hex_code}</Text>
-
         {data.discovered_by && (
           <Text style={[styles.discovererHero, { color: fg }]}>
             discovered by @{data.discovered_by.username}
@@ -92,6 +118,14 @@ export default function ColorDetailScreen({ hexId, onClose }: Props) {
           </View>
         </View>
 
+        {/* Add to palette */}
+        <View style={styles.section}>
+          <TouchableOpacity style={[styles.addPaletteBtn, { borderColor: bg }]} onPress={openPalettePicker}>
+            <Text style={styles.addPaletteBtnIcon}>▦</Text>
+            <Text style={styles.addPaletteBtnText}>Add to palette</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Similar colors */}
         {data.similar?.length > 0 && (
           <View style={styles.section}>
@@ -109,6 +143,60 @@ export default function ColorDetailScreen({ hexId, onClose }: Props) {
 
         <View style={{ height: insets.bottom + 24 }} />
       </ScrollView>
+
+      {/* Palette picker modal */}
+      <Modal visible={palettePickerOpen} transparent animationType="slide">
+        <View style={styles.pickerOverlay}>
+          <View style={styles.pickerSheet}>
+            <View style={styles.pickerHandle} />
+            <Text style={styles.pickerTitle}>Add #{data.hex_code} to...</Text>
+
+            {palettes.length === 0 ? (
+              <View style={styles.pickerEmpty}>
+                <Text style={styles.pickerEmptyText}>No palettes yet — create one in the Palettes tab</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={palettes}
+                keyExtractor={p => p.id}
+                style={{ maxHeight: 320 }}
+                renderItem={({ item: p }) => {
+                  const isAdded = added.has(p.id);
+                  const isLoading = addingTo === p.id;
+                  return (
+                    <TouchableOpacity
+                      style={[styles.pickerRow, isAdded && styles.pickerRowDone]}
+                      onPress={() => handleAddToPalette(p.id)}
+                      disabled={isAdded || isLoading}
+                    >
+                      {/* Mini swatch strip */}
+                      <View style={styles.pickerStrip}>
+                        {(p.preview?.length ? p.preview : ['333333']).map((hex, i) => (
+                          <View key={i} style={[styles.pickerStripSeg, { backgroundColor: `#${hex}` }]} />
+                        ))}
+                      </View>
+                      <View style={styles.pickerMeta}>
+                        <Text style={styles.pickerName}>{p.name}</Text>
+                        <Text style={styles.pickerCount}>{p.colors_count}/12</Text>
+                      </View>
+                      <Text style={styles.pickerAction}>
+                        {isLoading ? '…' : isAdded ? '✓' : '+'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+
+            <TouchableOpacity
+              style={styles.pickerClose}
+              onPress={() => { setPalettePickerOpen(false); setAdded(new Set()); }}
+            >
+              <Text style={styles.pickerCloseText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -153,8 +241,28 @@ const styles = StyleSheet.create({
   statIcon: { fontSize: 20 },
   statNum: { color: '#fff', fontSize: 18, fontWeight: '800' },
   statLabel: { color: '#555', fontSize: 11 },
+  addPaletteBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#333' },
+  addPaletteBtnIcon: { color: '#fff', fontSize: 18 },
+  addPaletteBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   swatchGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   swatchItem: { alignItems: 'center', width: (W - 40 - 70) / 8, minWidth: 56 },
   swatch: { width: 48, height: 48, borderRadius: 10, marginBottom: 4 },
-  swatchLabel: { color: '#555', fontSize: 8, fontVariant: ['tabular-nums'] },
+  swatchLabel: { color: '#555', fontSize: 8 },
+  // Palette picker
+  pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  pickerSheet: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
+  pickerHandle: { width: 36, height: 4, backgroundColor: '#333', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  pickerTitle: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 16 },
+  pickerEmpty: { padding: 24, alignItems: 'center' },
+  pickerEmptyText: { color: '#555', textAlign: 'center', lineHeight: 20 },
+  pickerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
+  pickerRowDone: { opacity: 0.5 },
+  pickerStrip: { flexDirection: 'row', width: 40, height: 40, borderRadius: 8, overflow: 'hidden' },
+  pickerStripSeg: { flex: 1, height: '100%' },
+  pickerMeta: { flex: 1 },
+  pickerName: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  pickerCount: { color: '#555', fontSize: 12, marginTop: 2 },
+  pickerAction: { color: '#fff', fontSize: 22, fontWeight: '700', width: 28, textAlign: 'center' },
+  pickerClose: { marginTop: 16, padding: 14, backgroundColor: '#1a1a1a', borderRadius: 12, alignItems: 'center' },
+  pickerCloseText: { color: '#fff', fontWeight: '700' },
 });
