@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/authStore';
 import FeedScreen from '../screens/FeedScreen';
 import SearchScreen from '../screens/SearchScreen';
 import ColorOfTheDayScreen from '../screens/ColorOfTheDayScreen';
+import ChallengeScreen from '../screens/ChallengeScreen';
 import PalettesScreen from '../screens/PalettesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -47,6 +48,14 @@ function MainTabs() {
         options={{
           tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 22 }}>✦</Text>,
           tabBarLabel: 'Today',
+        }}
+      />
+      <Tab.Screen
+        name="Challenge"
+        component={ChallengeScreen}
+        options={{
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🎯</Text>,
+          tabBarLabel: 'Match',
         }}
       />
       <Tab.Screen
