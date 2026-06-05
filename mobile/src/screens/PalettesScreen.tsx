@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getPalettes, createPalette, deletePalette, Palette } from '../api/palettes';
+import PaletteDetailScreen from './PaletteDetailScreen';
 
 const { width: W } = Dimensions.get('window');
 
@@ -13,6 +14,7 @@ export default function PalettesScreen() {
   const [palettes, setPalettes] = useState<Palette[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [selectedPaletteId, setSelectedPaletteId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [saving, setSaving] = useState(false);
@@ -85,6 +87,7 @@ export default function PalettesScreen() {
           renderItem={({ item: p }) => (
             <TouchableOpacity
               style={styles.card}
+              onPress={() => setSelectedPaletteId(p.id)}
               onLongPress={() => handleDelete(p.id, p.name)}
               activeOpacity={0.8}
             >
@@ -163,6 +166,16 @@ export default function PalettesScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Palette detail */}
+      <Modal visible={!!selectedPaletteId} animationType="slide" presentationStyle="pageSheet">
+        {selectedPaletteId && (
+          <PaletteDetailScreen
+            paletteId={selectedPaletteId}
+            onClose={() => setSelectedPaletteId(null)}
+          />
+        )}
       </Modal>
     </View>
   );
