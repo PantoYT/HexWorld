@@ -168,6 +168,10 @@ class ColorController extends Controller
 
     public function markViewed(Request $request, int $hexId): JsonResponse
     {
+        // Ensure the color row exists first — a fresh color viewed in the feed
+        // has no row yet, and the interaction FK + views_count both need one.
+        ColorService::findOrCreate($hexId);
+
         DB::table('user_color_interactions')->upsert(
             ['user_id' => $request->user()->id, 'hex_id' => $hexId, 'viewed_at' => now(), 'liked' => false, 'saved' => false, 'created_at' => now(), 'updated_at' => now()],
             ['user_id', 'hex_id'],
