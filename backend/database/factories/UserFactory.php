@@ -24,8 +24,13 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $username = fake()->unique()->userName();
+        // Schema allows [a-zA-Z0-9_], max 32
+        $username = substr(preg_replace('/[^a-zA-Z0-9_]/', '', $username), 0, 32) ?: 'user' . fake()->numberBetween(1, 99999);
+
         return [
-            'name' => fake()->name(),
+            'username' => $username,
+            'display_name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),

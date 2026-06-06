@@ -59,35 +59,30 @@ class ColorController extends Controller
 
         $user = $request->user();
 
-        // Atomic discovery — only succeeds if not yet discovered
-        $attrs = ColorService::buildAttributes($hexId);
-        $attrs['discovered_by'] = $user->id;
-        $attrs['discovered_at'] = now();
-        $attrs['custom_name'] = $data['custom_name'] ?? null;
+        // Ensure the row exists (lazy-init), then attempt an atomic claim:
+        // the WHERE discovered_by IS NULL guarantees only one concurrent caller
+        // can ever flip an unclaimed color to claimed.
+        ColorService::findOrCreate($hexId);
 
-        $updated = DB::statement(
-            'INSERT INTO colors (hex_id, hex_code, r, g, b, hue, saturation, lightness, discovered_by, discovered_at, custom_name, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-             ON CONFLICT (hex_id) DO UPDATE SET
-               discovered_by = CASE WHEN colors.discovered_by IS NULL THEN EXCLUDED.discovered_by ELSE colors.discovered_by END,
-               discovered_at = CASE WHEN colors.discovered_by IS NULL THEN EXCLUDED.discovered_at ELSE colors.discovered_at END,
-               custom_name   = CASE WHEN colors.discovered_by IS NULL THEN EXCLUDED.custom_name   ELSE colors.custom_name   END,
-               updated_at    = NOW()
-             RETURNING (xmax = 0 OR (xmax <> 0 AND discovered_by = ?)) AS is_first_discoverer',
-            [
-                $attrs['hex_id'], $attrs['hex_code'], $attrs['r'], $attrs['g'], $attrs['b'],
-                $attrs['hue'], $attrs['saturation'], $attrs['lightness'],
-                $user->id, now(), $attrs['custom_name'],
-                $user->id,
-            ]
-        );
+        $claimed = DB::table('colors')
+            ->where('hex_id', $hexId)
+            ->whereNull('discovered_by')
+            ->update([
+                'discovered_by' => $user->id,
+                'discovered_at' => now(),
+                'custom_name' => $data['custom_name'] ?? null,
+            ]);
 
-        $color = Color::find($hexId);
-        $isFirstDiscoverer = $color && $color->discovered_by === $user->id;
-
-        if ($isFirstDiscoverer) {
+        // $claimed === 1 means THIS request won the color (net-new discovery).
+        if ($claimed === 1) {
             $user->increment('discovered_count');
         }
+
+        $color = Color::find($hexId);
+        // True when the caller owns the color — including a no-op re-discover
+        // by the same user — but discovered_count was only bumped above on the
+        // net-new claim, so repeat calls never inflate it.
+        $isFirstDiscoverer = $color && $color->discovered_by === $user->id;
 
         return response()->json([
             'is_first_discoverer' => $isFirstDiscoverer,
