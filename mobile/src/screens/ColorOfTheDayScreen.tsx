@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Dimensions,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  ActivityIndicator, Dimensions, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getColorOfTheDay } from '../api/palettes';
+import { getColorOfTheDay, getColorOfTheDayHistory } from '../api/palettes';
 import { ColorData } from '../api/colors';
+import ColorDetailScreen from './ColorDetailScreen';
 
 const { width: W } = Dimensions.get('window');
 
@@ -32,15 +33,23 @@ function useCountdown() {
   return `${h}:${m}:${s}`;
 }
 
+type CotdColor = ColorData & { cotd_date: string };
+
 export default function ColorOfTheDayScreen() {
   const insets = useSafeAreaInsets();
   const countdown = useCountdown();
-  const [cotd, setCotd] = useState<(ColorData & { cotd_date: string }) | null>(null);
+  const [cotd, setCotd] = useState<CotdColor | null>(null);
+  const [history, setHistory] = useState<CotdColor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detailHexId, setDetailHexId] = useState<number | null>(null);
 
   useEffect(() => {
-    getColorOfTheDay()
-      .then(setCotd)
+    Promise.all([getColorOfTheDay(), getColorOfTheDayHistory()])
+      .then(([today, hist]) => {
+        setCotd(today);
+        // Drop today's entry from the history strip (it's the hero already)
+        setHistory(hist.data.filter(h => h.hex_id !== today.hex_id));
+      })
       .catch(console.warn)
       .finally(() => setLoading(false));
   }, []);
@@ -63,7 +72,9 @@ export default function ColorOfTheDayScreen() {
 
       {/* Main color info */}
       <View style={styles.center}>
-        <Text style={[styles.hex, { color: fg }]}>#{cotd.hex_code}</Text>
+        <TouchableOpacity onPress={() => setDetailHexId(cotd.hex_id)} activeOpacity={0.7}>
+          <Text style={[styles.hex, { color: fg }]}>#{cotd.hex_code}</Text>
+        </TouchableOpacity>
         {cotd.custom_name && (
           <Text style={[styles.name, { color: fg }]}>"{cotd.custom_name}"</Text>
         )}
@@ -84,21 +95,58 @@ export default function ColorOfTheDayScreen() {
         )}
       </View>
 
-      {/* Countdown */}
-      <View style={[styles.countdown, { bottom: insets.bottom + 24 }]}>
-        <Text style={[styles.countdownLabel, { color: fg }]}>Next color in</Text>
-        <Text style={[styles.countdownTimer, { color: fg }]}>{countdown}</Text>
+      {/* Bottom: history strip + countdown */}
+      <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]}>
+        {history.length > 0 && (
+          <View style={styles.historyBlock}>
+            <Text style={[styles.historyLabel, { color: fg }]}>Past colors</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.historyRow}
+            >
+              {history.map(h => (
+                <TouchableOpacity
+                  key={h.hex_id}
+                  onPress={() => setDetailHexId(h.hex_id)}
+                  activeOpacity={0.7}
+                  style={styles.historyItem}
+                >
+                  <View style={[styles.historySwatch, {
+                    backgroundColor: `#${h.hex_code}`,
+                    borderColor: `${fg}33`,
+                  }]} />
+                  <Text style={[styles.historyDate, { color: fg }]}>
+                    {h.cotd_date.split('-').slice(1).join('/')}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        <View style={styles.countdown}>
+          <Text style={[styles.countdownLabel, { color: fg }]}>Next color in</Text>
+          <Text style={[styles.countdownTimer, { color: fg }]}>{countdown}</Text>
+        </View>
       </View>
+
+      {/* Color detail modal */}
+      <Modal visible={detailHexId !== null} animationType="slide" presentationStyle="pageSheet">
+        {detailHexId !== null && (
+          <ColorDetailScreen hexId={detailHexId} onClose={() => setDetailHexId(null)} />
+        )}
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   loader: { flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'center', alignItems: 'center' },
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1 },
   badge: { position: 'absolute', alignSelf: 'center' },
   badgeText: { fontSize: 11, fontWeight: '800', letterSpacing: 3, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  center: { alignItems: 'center', gap: 8 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8 },
   hex: { fontSize: 52, fontWeight: '900', letterSpacing: 2 },
   name: { fontSize: 20, fontWeight: '700', opacity: 0.85 },
   rgb: { fontSize: 15, opacity: 0.7, marginTop: 4 },
@@ -106,7 +154,14 @@ const styles = StyleSheet.create({
   discoverer: { marginTop: 24, borderWidth: 1, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10, alignItems: 'center' },
   discovererLabel: { fontSize: 11, opacity: 0.6 },
   discovererName: { fontSize: 15, fontWeight: '700' },
-  countdown: { position: 'absolute', alignItems: 'center' },
+  bottom: { paddingHorizontal: 16 },
+  historyBlock: { marginBottom: 20 },
+  historyLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.6, marginBottom: 8, marginLeft: 4 },
+  historyRow: { gap: 10, paddingHorizontal: 4 },
+  historyItem: { alignItems: 'center', gap: 4 },
+  historySwatch: { width: 44, height: 44, borderRadius: 12, borderWidth: 1 },
+  historyDate: { fontSize: 9, opacity: 0.6, fontVariant: ['tabular-nums'] },
+  countdown: { alignItems: 'center' },
   countdownLabel: { fontSize: 11, opacity: 0.5, letterSpacing: 1, textTransform: 'uppercase' },
   countdownTimer: { fontSize: 28, fontWeight: '900', fontVariant: ['tabular-nums'], letterSpacing: 2 },
 });
