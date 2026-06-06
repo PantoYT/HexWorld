@@ -35,3 +35,12 @@ export const getColorOfTheDay = () =>
 
 export const getPaletteDetail = (id: string) =>
   api.get<Palette & { colors: ColorData[] }>(`/palettes/${id}`).then(r => r.data);
+
+export const getTrending = () =>
+  api.get<{ data: ColorData[] }>('/trending').then(r => r.data);
+
+export const getRecentDiscoveries = () =>
+  api.get<{ data: ColorData[] }>('/discoveries/recent').then(r => r.data);
+
+export const getHistory = () =>
+  api.get<{ data: ColorData[] }>('/history').then(r => r.data);

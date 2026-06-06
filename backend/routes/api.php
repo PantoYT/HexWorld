@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ColorController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\FeedController;
 use App\Http\Controllers\Api\ColorOfTheDayController;
+use App\Http\Controllers\Api\TrendingController;
 use App\Http\Controllers\Api\PaletteController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\UserController;
@@ -27,6 +28,13 @@ Route::prefix('v1')->group(function () {
     Route::get('/search', [SearchController::class, 'search']);
     Route::get('/color-of-the-day', [ColorOfTheDayController::class, 'today']);
     Route::get('/color-of-the-day/history', [ColorOfTheDayController::class, 'history']);
+    Route::get('/trending', [TrendingController::class, 'trending']);
+    Route::get('/discoveries/recent', [TrendingController::class, 'recentDiscoveries']);
+});
+
+// History requires auth
+Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
+    Route::get('/history', [TrendingController::class, 'history']);
 });
 
 // Authenticated routes
@@ -35,12 +43,12 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
 
     // Feed
-    Route::get('/feed/next', [FeedController::class, 'next']);
+    Route::get('/feed/next', [FeedController::class, 'next'])->middleware('rl:feed');
 
     // Color interactions
     Route::post('/colors/{hexId}/discover', [ColorController::class, 'discover'])->whereNumber('hexId');
-    Route::post('/colors/{hexId}/like', [ColorController::class, 'like'])->whereNumber('hexId');
-    Route::post('/colors/{hexId}/unlike', [ColorController::class, 'unlike'])->whereNumber('hexId');
+    Route::post('/colors/{hexId}/like', [ColorController::class, 'like'])->whereNumber('hexId')->middleware('rl:like');
+    Route::post('/colors/{hexId}/unlike', [ColorController::class, 'unlike'])->whereNumber('hexId')->middleware('rl:like');
     Route::post('/colors/{hexId}/save', [ColorController::class, 'save'])->whereNumber('hexId');
     Route::post('/colors/{hexId}/unsave', [ColorController::class, 'unsave'])->whereNumber('hexId');
     Route::post('/colors/{hexId}/view', [ColorController::class, 'markViewed'])->whereNumber('hexId');
