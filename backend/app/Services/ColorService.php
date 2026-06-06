@@ -31,7 +31,8 @@ class ColorService
         $l = ($max + $min) / 2;
 
         if ($max === $min) {
-            return ['h' => 0, 's' => 0, 'l' => round($l * 100, 2)];
+            // Achromatic (grey) — return floats to match the chromatic path below.
+            return ['h' => 0.0, 's' => 0.0, 'l' => round($l * 100, 2)];
         }
 
         $d = $max - $min;
