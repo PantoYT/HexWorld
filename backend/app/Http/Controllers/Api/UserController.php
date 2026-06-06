@@ -59,7 +59,13 @@ class UserController extends Controller
             ->paginate(24);
 
         return response()->json([
-            'data' => $interactions->map(fn($i) => ColorService::toArray($i->hex_id)),
+            'data' => $interactions->map(fn($i) => array_merge(
+                ColorService::toArray($i->hex_id),
+                [
+                    'custom_name' => $i->color?->custom_name,
+                    'likes_count' => $i->color?->likes_count ?? 0,
+                ]
+            )),
             'meta' => [
                 'current_page' => $interactions->currentPage(),
                 'last_page' => $interactions->lastPage(),

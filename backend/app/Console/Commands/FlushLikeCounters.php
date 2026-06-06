@@ -25,9 +25,13 @@ class FlushLikeCounters extends Command
             $delta = (int) Redis::getdel($key);
             if ($delta === 0) continue;
 
+            // Clamp at 0 — the column is unsigned, and unlikes can push a delta
+            // negative past what's already persisted.
             DB::table('colors')
                 ->where('hex_id', $hexId)
-                ->increment('likes_count', $delta);
+                ->update([
+                    'likes_count' => DB::raw('GREATEST(0, likes_count + ' . $delta . ')'),
+                ]);
 
             $flushed++;
         }

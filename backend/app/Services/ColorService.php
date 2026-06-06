@@ -118,32 +118,44 @@ class ColorService
     }
 
     /**
-     * Returns hex_ids of N nearest colors in HSL space (computed, no DB).
+     * Returns N nearest colors in HSL space — deterministic.
+     *
+     * Instead of random sampling, we perturb the target's RGB channels across a
+     * fixed grid of offsets. This produces genuinely similar colors and returns
+     * the same result for the same hex_id on every call.
      */
     public static function similarColors(int $hexId, int $count = 8): array
     {
         $rgb = self::rgbFromHexId($hexId);
         $hsl = self::rgbToHsl($rgb['r'], $rgb['g'], $rgb['b']);
 
+        // Structured offsets per channel: small + medium steps in both directions.
+        $offsets = [-48, -32, -20, -10, 10, 20, 32, 48];
+
         $candidates = [];
-        for ($i = 0; $i < 200; $i++) {
-            $candidateId = rand(0, 16777215);
-            if ($candidateId === $hexId) {
-                continue;
+        foreach ($offsets as $dr) {
+            foreach ($offsets as $dg) {
+                foreach ($offsets as $db) {
+                    $r = max(0, min(255, $rgb['r'] + $dr));
+                    $g = max(0, min(255, $rgb['g'] + $dg));
+                    $b = max(0, min(255, $rgb['b'] + $db));
+
+                    $candidateId = self::hexIdFromRgb($r, $g, $b);
+                    if ($candidateId === $hexId || isset($candidates[$candidateId])) {
+                        continue;
+                    }
+
+                    $cHsl = self::rgbToHsl($r, $g, $b);
+                    $candidates[$candidateId] = self::hslDistance($hsl, $cHsl);
+                }
             }
-            $cRgb = self::rgbFromHexId($candidateId);
-            $cHsl = self::rgbToHsl($cRgb['r'], $cRgb['g'], $cRgb['b']);
-            $candidates[] = [
-                'hex_id' => $candidateId,
-                'distance' => self::hslDistance($hsl, $cHsl),
-            ];
         }
 
-        usort($candidates, fn($a, $b) => $a['distance'] <=> $b['distance']);
+        asort($candidates);
 
         return array_map(
-            fn($c) => self::toArray($c['hex_id']),
-            array_slice($candidates, 0, $count)
+            fn($id) => self::toArray($id),
+            array_slice(array_keys($candidates), 0, $count)
         );
     }
 }

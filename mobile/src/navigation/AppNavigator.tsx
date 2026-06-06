@@ -17,24 +17,21 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const ONBOARDING_KEY = 'hexworld_onboarded';
 
-function getStorage() {
-  if (Platform.OS === 'web') {
-    return {
-      getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
-      setItem: (key: string, val: string) => { localStorage.setItem(key, val); return Promise.resolve(); },
-    };
-  }
-  // On native, use a simple in-memory fallback (replace with AsyncStorage if installed)
-  const mem: Record<string, string> = {};
-  return {
-    getItem: (key: string) => Promise.resolve(mem[key] ?? null),
-    setItem: (key: string, val: string) => { mem[key] = val; return Promise.resolve(); },
-  };
-}
-
-const storage = getStorage();
+// Web persists via localStorage; native persists via AsyncStorage.
+const storage = {
+  getItem: (key: string) =>
+    Platform.OS === 'web'
+      ? Promise.resolve(localStorage.getItem(key))
+      : AsyncStorage.getItem(key),
+  setItem: (key: string, val: string) =>
+    Platform.OS === 'web'
+      ? (localStorage.setItem(key, val), Promise.resolve())
+      : AsyncStorage.setItem(key, val),
+};
 
 function MainTabs() {
   return (

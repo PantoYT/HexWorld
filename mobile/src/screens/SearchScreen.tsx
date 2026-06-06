@@ -26,33 +26,6 @@ function ColorTile({ c, size = TILE }: { c: ColorData; size?: number }) {
   );
 }
 
-function HorizontalStrip({ title, data, loading }: { title: string; data: ColorData[]; loading: boolean }) {
-  if (loading) return (
-    <View style={styles.stripSection}>
-      <Text style={styles.stripTitle}>{title}</Text>
-      <ActivityIndicator color="#555" style={{ margin: 20 }} />
-    </View>
-  );
-  if (data.length === 0) return null;
-  return (
-    <View style={styles.stripSection}>
-      <Text style={styles.stripTitle}>{title}</Text>
-      <SectionList
-        sections={[]}
-        renderItem={() => null}
-        ListHeaderComponent={(
-          <View style={styles.stripRow}>
-            {data.slice(0, 8).map(c => <ColorTile key={c.hex_id} c={c} />)}
-          </View>
-        )}
-      />
-      <View style={styles.stripRow}>
-        {data.slice(0, 8).map(c => <ColorTile key={c.hex_id} c={c} />)}
-      </View>
-    </View>
-  );
-}
-
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');

@@ -10,10 +10,10 @@ use Symfony\Component\HttpFoundation\Response;
 class RateLimitApi
 {
     /**
-     * Limits per sliding window:
-     *   - /feed/next      : 60 req / 60s per user (1/sec average)
-     *   - /colors/*/like  : 120 req / 60s per user
-     *   - everything else : 300 req / 60s per user
+     * Fixed-window counter (INCR + EXPIRE on first hit of each window):
+     *   - feed    : 60 req / 60s per user (1/sec average)
+     *   - like    : 120 req / 60s per user
+     *   - default : 300 req / 60s per user
      */
     public function handle(Request $request, Closure $next, string $tier = 'default'): Response
     {
