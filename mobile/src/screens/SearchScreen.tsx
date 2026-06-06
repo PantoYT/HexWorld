@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  SectionList, ActivityIndicator, Dimensions,
+  SectionList, ActivityIndicator, Dimensions, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { searchColors, getTrending, getRecentDiscoveries } from '../api/palettes';
+import { searchColors, getTrending, getRecentDiscoveries, getFollowingFeed } from '../api/palettes';
 import { ColorData } from '../api/colors';
+import ColorDetailScreen from './ColorDetailScreen';
 
 const { width: W } = Dimensions.get('window');
 const TILE = (W - 40) / 4;
@@ -14,15 +15,19 @@ function getTextColor(r: number, g: number, b: number) {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5 ? '#000' : '#fff';
 }
 
-function ColorTile({ c, size = TILE }: { c: ColorData; size?: number }) {
+function ColorTile({ c, size = TILE, onPress }: { c: ColorData; size?: number; onPress?: () => void }) {
   const fg = getTextColor(c.r, c.g, c.b);
   return (
-    <View style={[styles.tile, { width: size, height: size, backgroundColor: `#${c.hex_code}` }]}>
+    <TouchableOpacity
+      style={[styles.tile, { width: size, height: size, backgroundColor: `#${c.hex_code}` }]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       {c.custom_name && (
         <Text style={[styles.tileName, { color: fg }]} numberOfLines={1}>{c.custom_name}</Text>
       )}
       <Text style={[styles.tileHex, { color: fg }]}>#{c.hex_code}</Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -34,12 +39,14 @@ export default function SearchScreen() {
   const [searched, setSearched] = useState(false);
   const [trending, setTrending] = useState<ColorData[]>([]);
   const [recent, setRecent] = useState<ColorData[]>([]);
+  const [following, setFollowing] = useState<ColorData[]>([]);
   const [loadingBg, setLoadingBg] = useState(true);
+  const [detailHexId, setDetailHexId] = useState<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    Promise.all([getTrending(), getRecentDiscoveries()])
-      .then(([t, r]) => { setTrending(t.data); setRecent(r.data); })
+    Promise.all([getTrending(), getRecentDiscoveries(), getFollowingFeed()])
+      .then(([t, r, f]) => { setTrending(t.data); setRecent(r.data); setFollowing(f.data); })
       .catch(console.warn)
       .finally(() => setLoadingBg(false));
   }, []);
@@ -100,7 +107,12 @@ export default function SearchScreen() {
               {results.map(c => {
                 const fg = getTextColor(c.r, c.g, c.b);
                 return (
-                  <View key={c.hex_id} style={[styles.resultCard, { backgroundColor: `#${c.hex_code}` }]}>
+                  <TouchableOpacity
+                    key={c.hex_id}
+                    style={[styles.resultCard, { backgroundColor: `#${c.hex_code}` }]}
+                    onPress={() => setDetailHexId(c.hex_id)}
+                    activeOpacity={0.85}
+                  >
                     {c.custom_name && (
                       <Text style={[styles.resultName, { color: fg }]} numberOfLines={1}>
                         "{c.custom_name}"
@@ -112,7 +124,7 @@ export default function SearchScreen() {
                         @{(c as any).discovered_by.username}
                       </Text>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -143,6 +155,18 @@ export default function SearchScreen() {
                 </View>
               </View>
 
+              {/* From your follows — only shown when there's content */}
+              {following.length > 0 && (
+                <View style={styles.stripSection}>
+                  <Text style={styles.stripTitle}>👥 From Your Follows</Text>
+                  <View style={styles.stripRow}>
+                    {following.slice(0, 8).map(c => (
+                      <ColorTile key={c.hex_id} c={c} onPress={() => setDetailHexId(c.hex_id)} />
+                    ))}
+                  </View>
+                </View>
+              )}
+
               {/* Trending */}
               <View style={styles.stripSection}>
                 <Text style={styles.stripTitle}>🔥 Trending</Text>
@@ -150,7 +174,7 @@ export default function SearchScreen() {
                   <ActivityIndicator color="#555" style={{ margin: 16 }} />
                 ) : trending.length > 0 ? (
                   <View style={styles.stripRow}>
-                    {trending.slice(0, 8).map(c => <ColorTile key={c.hex_id} c={c} />)}
+                    {trending.slice(0, 8).map(c => <ColorTile key={c.hex_id} c={c} onPress={() => setDetailHexId(c.hex_id)} />)}
                   </View>
                 ) : (
                   <Text style={styles.stripEmpty}>No trending colors yet — start exploring!</Text>
@@ -164,7 +188,7 @@ export default function SearchScreen() {
                   <ActivityIndicator color="#555" style={{ margin: 16 }} />
                 ) : recent.length > 0 ? (
                   <View style={styles.stripRow}>
-                    {recent.slice(0, 8).map(c => <ColorTile key={c.hex_id} c={c} />)}
+                    {recent.slice(0, 8).map(c => <ColorTile key={c.hex_id} c={c} onPress={() => setDetailHexId(c.hex_id)} />)}
                   </View>
                 ) : (
                   <Text style={styles.stripEmpty}>Be the first discoverer!</Text>
@@ -174,6 +198,13 @@ export default function SearchScreen() {
           )}
         />
       )}
+
+      {/* Color detail modal */}
+      <Modal visible={detailHexId !== null} animationType="slide" presentationStyle="pageSheet">
+        {detailHexId !== null && (
+          <ColorDetailScreen hexId={detailHexId} onClose={() => setDetailHexId(null)} />
+        )}
+      </Modal>
     </View>
   );
 }

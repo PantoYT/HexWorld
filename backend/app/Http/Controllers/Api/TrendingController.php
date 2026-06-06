@@ -71,6 +71,36 @@ class TrendingController extends Controller
     }
 
     /**
+     * Recent discoveries by users the authenticated user follows.
+     */
+    public function followingDiscoveries(Request $request): JsonResponse
+    {
+        $followingIds = $request->user()->following()->pluck('users.id');
+
+        if ($followingIds->isEmpty()) {
+            return response()->json(['data' => []]);
+        }
+
+        $colors = Color::with('discoverer')
+            ->whereIn('discovered_by', $followingIds)
+            ->orderByDesc('discovered_at')
+            ->limit(24)
+            ->get()
+            ->map(function ($c) {
+                $data = ColorService::toArray($c->hex_id);
+                $data['custom_name'] = $c->custom_name;
+                $data['likes_count'] = $c->likes_count;
+                $data['discovered_at'] = $c->discovered_at?->toISOString();
+                $data['discovered_by'] = $c->discoverer
+                    ? ['id' => $c->discoverer->id, 'username' => $c->discoverer->username]
+                    : null;
+                return $data;
+            });
+
+        return response()->json(['data' => $colors]);
+    }
+
+    /**
      * Newly discovered colors (recently discovered, any user).
      */
     public function recentDiscoveries(): JsonResponse

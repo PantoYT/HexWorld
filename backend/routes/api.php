@@ -32,9 +32,10 @@ Route::prefix('v1')->group(function () {
     Route::get('/discoveries/recent', [TrendingController::class, 'recentDiscoveries']);
 });
 
-// History requires auth
+// History + following feed require auth
 Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/history', [TrendingController::class, 'history']);
+    Route::get('/feed/following', [TrendingController::class, 'followingDiscoveries']);
 });
 
 // Authenticated routes

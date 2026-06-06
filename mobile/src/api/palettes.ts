@@ -45,5 +45,8 @@ export const getTrending = () =>
 export const getRecentDiscoveries = () =>
   api.get<{ data: ColorData[] }>('/discoveries/recent').then(r => r.data);
 
+export const getFollowingFeed = () =>
+  api.get<{ data: ColorData[] }>('/feed/following').then(r => r.data);
+
 export const getHistory = () =>
   api.get<{ data: ColorData[] }>('/history').then(r => r.data);
