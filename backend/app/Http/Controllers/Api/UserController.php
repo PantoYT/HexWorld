@@ -14,6 +14,13 @@ class UserController extends Controller
     {
         $user = User::where('username', $username)->firstOrFail();
 
+        // Optional auth: resolves the bearer token even on this public route.
+        $viewer = auth('sanctum')->user();
+        $isSelf = $viewer && $viewer->id === $user->id;
+        $isFollowing = $viewer && !$isSelf
+            ? $viewer->following()->where('following_id', $user->id)->exists()
+            : false;
+
         return response()->json([
             'id' => $user->id,
             'username' => $user->username,
@@ -23,6 +30,8 @@ class UserController extends Controller
             'discovered_count' => $user->discovered_count,
             'followers_count' => $user->followers_count,
             'following_count' => $user->following_count,
+            'is_self' => $isSelf,
+            'is_following' => $isFollowing,
         ]);
     }
 

@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getColor, ColorData } from '../api/colors';
 import { getPalettes, addColorToPalette, Palette } from '../api/palettes';
+import PublicProfileScreen from './PublicProfileScreen';
 
 const { width: W } = Dimensions.get('window');
 
@@ -38,6 +39,7 @@ export default function ColorDetailScreen({ hexId, onClose }: Props) {
   const [palettes, setPalettes] = useState<Palette[]>([]);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
+  const [profileUsername, setProfileUsername] = useState<string | null>(null);
 
   useEffect(() => {
     getColor(hexId).then(setData).catch(console.warn);
@@ -90,9 +92,11 @@ export default function ColorDetailScreen({ hexId, onClose }: Props) {
         )}
         <Text style={[styles.hexHero, { color: fg }]}>#{data.hex_code}</Text>
         {data.discovered_by && (
-          <Text style={[styles.discovererHero, { color: fg }]}>
-            discovered by @{data.discovered_by.username}
-          </Text>
+          <TouchableOpacity onPress={() => setProfileUsername(data.discovered_by!.username)} activeOpacity={0.6}>
+            <Text style={[styles.discovererHero, { color: fg }]}>
+              discovered by @{data.discovered_by.username} ›
+            </Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -196,6 +200,13 @@ export default function ColorDetailScreen({ hexId, onClose }: Props) {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Discoverer profile modal */}
+      <Modal visible={profileUsername !== null} animationType="slide" presentationStyle="pageSheet">
+        {profileUsername !== null && (
+          <PublicProfileScreen username={profileUsername} onClose={() => setProfileUsername(null)} />
+        )}
       </Modal>
     </View>
   );
