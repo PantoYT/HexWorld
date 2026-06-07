@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Dimensions, Alert, Share, Platform,
+  ActivityIndicator, Dimensions, Alert, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getPaletteDetail, removeColorFromPalette, Palette } from '../api/palettes';
 import { ColorData } from '../api/colors';
+import { exportPalette } from '../utils/paletteExport';
 
 const { width: W } = Dimensions.get('window');
 const SWATCH_SIZE = (W - 48) / 4;
@@ -53,16 +54,12 @@ export default function PaletteDetailScreen({ paletteId, onClose }: Props) {
   };
 
   const handleExport = async () => {
-    if (!palette) return;
-    // Generate a text representation with all hex codes (PNG export needs canvas/native module)
-    const hexList = palette.colors.map(c =>
-      `#${c.hex_code}${c.custom_name ? ` — ${c.custom_name}` : ''}`
-    ).join('\n');
-
-    const shareText = `${palette.name}\n${'─'.repeat(32)}\n${hexList}\n\nCreated with HexWorld`;
-
+    if (!palette || palette.colors.length === 0) {
+      Alert.alert('Empty palette', 'Add some colors before exporting.');
+      return;
+    }
     try {
-      await Share.share({ message: shareText, title: palette.name });
+      await exportPalette(palette);
     } catch (e) { console.warn(e); }
   };
 
@@ -78,7 +75,7 @@ export default function PaletteDetailScreen({ paletteId, onClose }: Props) {
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleExport} style={styles.exportBtn}>
-          <Text style={styles.exportText}>Share ↑</Text>
+          <Text style={styles.exportText}>{Platform.OS === 'web' ? 'Export PNG ↓' : 'Share ↑'}</Text>
         </TouchableOpacity>
       </View>
 
