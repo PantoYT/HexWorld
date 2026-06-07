@@ -1,10 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Dimensions,
-  Animated, FlatList,
+  View, Text, StyleSheet, TouchableOpacity, Dimensions, Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Platform } from 'react-native';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -49,52 +47,45 @@ interface Props {
 export default function OnboardingScreen({ onFinish }: Props) {
   const insets = useSafeAreaInsets();
   const [current, setCurrent] = useState(0);
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const flatRef = useRef<FlatList>(null);
+  const fade = useRef(new Animated.Value(1)).current;
+
+  // Cross-fade the slide whenever the index changes.
+  useEffect(() => {
+    fade.setValue(0);
+    Animated.timing(fade, { toValue: 1, duration: 280, useNativeDriver: true }).start();
+  }, [current]);
 
   const next = () => {
     if (current < SLIDES.length - 1) {
-      flatRef.current?.scrollToIndex({ index: current + 1, animated: true });
-      setCurrent(current + 1);
+      setCurrent(c => c + 1);
     } else {
       onFinish();
     }
   };
 
-  const skip = () => onFinish();
+  const slide = SLIDES[current];
+  const fg = getTextColor(slide.bg);
+  const isLast = current === SLIDES.length - 1;
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        ref={flatRef}
-        data={SLIDES}
-        keyExtractor={(_, i) => String(i)}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEnabled={false}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: false })}
-        renderItem={({ item: slide }) => {
-          const fg = getTextColor(slide.bg);
-          return (
-            <View style={[styles.slide, { backgroundColor: slide.bg, paddingTop: insets.top + 40 }]}>
-              <Text style={[styles.slideIcon, { color: fg }]}>{slide.icon}</Text>
-              <Text style={[styles.slideTitle, { color: fg }]}>{slide.title}</Text>
-              <Text style={[styles.slideSubtitle, { color: fg }]}>{slide.subtitle}</Text>
-            </View>
-          );
-        }}
-      />
+    <View style={[styles.container, { backgroundColor: slide.bg }]}>
+      {/* Slide content (single, index-driven — reliable on web + native) */}
+      <Animated.View style={[styles.slide, { paddingTop: insets.top + 40, opacity: fade }]}>
+        <Text style={[styles.slideIcon, { color: fg }]}>{slide.icon}</Text>
+        <Text style={[styles.slideTitle, { color: fg }]}>{slide.title}</Text>
+        <Text style={[styles.slideSubtitle, { color: fg }]}>{slide.subtitle}</Text>
+      </Animated.View>
 
       {/* Bottom controls */}
       <View style={[styles.controls, { paddingBottom: insets.bottom + 20 }]}>
         {/* Dots */}
         <View style={styles.dots}>
           {SLIDES.map((_, i) => (
-            <Animated.View
+            <View
               key={i}
               style={[
                 styles.dot,
+                { backgroundColor: i === current ? fg : `${fg}55` },
                 i === current && styles.dotActive,
               ]}
             />
@@ -102,18 +93,18 @@ export default function OnboardingScreen({ onFinish }: Props) {
         </View>
 
         <View style={styles.btnRow}>
-          {current < SLIDES.length - 1 ? (
+          {!isLast ? (
             <>
-              <TouchableOpacity style={styles.skipBtn} onPress={skip}>
-                <Text style={styles.skipText}>Skip</Text>
+              <TouchableOpacity style={[styles.skipBtn, { borderColor: `${fg}44` }]} onPress={onFinish}>
+                <Text style={[styles.skipText, { color: fg }]}>Skip</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.nextBtn} onPress={next}>
-                <Text style={styles.nextText}>Next →</Text>
+              <TouchableOpacity style={[styles.nextBtn, { backgroundColor: fg }]} onPress={next}>
+                <Text style={[styles.nextText, { color: slide.bg }]}>Next →</Text>
               </TouchableOpacity>
             </>
           ) : (
-            <TouchableOpacity style={[styles.nextBtn, styles.startBtn]} onPress={onFinish}>
-              <Text style={styles.nextText}>Start Exploring</Text>
+            <TouchableOpacity style={[styles.nextBtn, styles.startBtn, { backgroundColor: fg }]} onPress={onFinish}>
+              <Text style={[styles.nextText, { color: slide.bg }]}>Start Exploring</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -123,19 +114,19 @@ export default function OnboardingScreen({ onFinish }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  slide:     { width: W, height: H, justifyContent: 'center', paddingHorizontal: 36 },
+  container: { flex: 1 },
+  slide:     { flex: 1, width: W, justifyContent: 'center', paddingHorizontal: 36 },
   slideIcon: { fontSize: 64, marginBottom: 24 },
   slideTitle:    { fontSize: 52, fontWeight: '900', lineHeight: 56, marginBottom: 20 },
   slideSubtitle: { fontSize: 18, lineHeight: 26, opacity: 0.8, fontWeight: '400' },
-  controls:  { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'transparent', padding: 24 },
+  controls:  { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 24 },
   dots:      { flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: 24 },
-  dot:       { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.3)' },
-  dotActive: { width: 20, backgroundColor: '#fff' },
+  dot:       { width: 6, height: 6, borderRadius: 3 },
+  dotActive: { width: 20 },
   btnRow:    { flexDirection: 'row', gap: 12 },
-  skipBtn:   { flex: 1, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center' },
-  skipText:  { color: 'rgba(255,255,255,0.6)', fontWeight: '600', fontSize: 15 },
-  nextBtn:   { flex: 2, padding: 16, borderRadius: 14, backgroundColor: '#fff', alignItems: 'center' },
+  skipBtn:   { flex: 1, padding: 16, borderRadius: 14, borderWidth: 1, alignItems: 'center' },
+  skipText:  { fontWeight: '600', fontSize: 15, opacity: 0.8 },
+  nextBtn:   { flex: 2, padding: 16, borderRadius: 14, alignItems: 'center' },
   startBtn:  { flex: 1 },
-  nextText:  { color: '#000', fontWeight: '800', fontSize: 15 },
+  nextText:  { fontWeight: '800', fontSize: 15 },
 });
